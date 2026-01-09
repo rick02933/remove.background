@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 本機自動去背工具 (環境檢測版)</title>
-    <!-- Tailwind CSS for styling -->
+    <title>AI 自動去背工具 (GitHub Pages 專用版)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for icons -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Custom pattern for transparent background visualization */
         .checkerboard-bg {
             background-color: #ffffff;
             background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), 
@@ -20,37 +19,33 @@
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
-
-        .drop-zone {
-            transition: all 0.3s ease;
-        }
+        .drop-zone { transition: all 0.3s ease; }
         .drop-zone.drag-over {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-            transform: scale(1.02);
+            border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.02);
         }
-        
         .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .disabled-zone { opacity: 0.6; pointer-events: none; cursor: not-allowed; background-color: #f3f4f6; }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Log terminal style */
+        .terminal {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            background-color: #1e1e1e;
+            color: #4ade80;
+            padding: 12px;
+            border-radius: 8px;
+            height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
-
-        /* 禁用狀態樣式 */
-        .disabled-zone {
-            opacity: 0.6;
-            pointer-events: none;
-            cursor: not-allowed;
-            background-color: #f3f4f6;
-        }
+        .log-error { color: #f87171; }
+        .log-warn { color: #facc15; }
+        .log-info { color: #60a5fa; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
@@ -60,55 +55,41 @@
         <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-wand-magic-sparkles text-blue-600 text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">AI 本機去背神器</h1>
+                <h1 class="text-xl font-bold tracking-wide">AI 去背神器 (Debug Mode)</h1>
             </div>
             <div class="text-sm text-gray-500 hidden sm:block">
-                <i class="fa-solid fa-shield-halved mr-1"></i> 
-                圖片僅在瀏覽器本機處理，不會上傳伺服器
+                <i class="fa-brands fa-github mr-1"></i> GitHub Pages 優化版
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
     <main class="flex-grow flex flex-col items-center justify-start pt-10 px-4 pb-10">
-        
-        <div class="max-w-4xl w-full space-y-8">
+        <div class="max-w-4xl w-full space-y-6">
             
-            <!-- Intro Text -->
             <div class="text-center space-y-2">
                 <h2 class="text-3xl font-extrabold text-gray-900">一鍵移除圖片背景</h2>
                 <p class="text-gray-600">支援拖放，無須上傳，完全免費</p>
             </div>
 
-            <!-- Protocol Warning Banner (Hidden by default) -->
-            <div id="protocolWarning" class="hidden bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-xl flex flex-col sm:flex-row items-start gap-3">
-                <i class="fa-solid fa-triangle-exclamation text-xl mt-1 text-yellow-600 shrink-0"></i>
-                <div class="text-sm">
-                    <p class="font-bold text-base mb-1">偵測到本地檔案模式 (file://)</p>
-                    <p>瀏覽器的安全沙盒通常會阻擋本地檔案執行 AI 運算或下載模型。</p>
-                    <p class="mt-2 text-yellow-700"><strong>建議解決方案：</strong></p>
-                    <ul class="list-disc list-inside mt-1 space-y-1">
-                        <li>使用 VS Code 的 "Live Server" 擴充套件開啟。</li>
-                        <li>使用 Python 指令 <code>python -m http.server</code> 架設簡易伺服器。</li>
-                        <li>將此檔案上傳至 GitHub Pages 或其他網頁空間。</li>
-                    </ul>
+            <!-- Debug Log Section (Visible to help troubleshoot) -->
+            <div class="w-full">
+                <div class="flex justify-between items-end mb-1 px-1">
+                    <span class="text-xs font-bold text-gray-500 uppercase">系統日誌 (若發生錯誤請截圖此處)</span>
+                    <button id="clearLogBtn" class="text-xs text-blue-500 hover:underline">清除日誌</button>
                 </div>
+                <div id="systemLog" class="terminal"></div>
             </div>
 
-            <!-- Library Loading Status (Initial) -->
-            <div id="libLoadingStatus" class="bg-blue-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-xl flex flex-col items-center justify-center gap-2">
-                <div class="flex items-center gap-3">
-                    <div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div>
-                    <span id="loadingText">正在尋找最佳連線來源...</span>
-                </div>
-                <div id="loadingSubText" class="text-xs text-blue-600/70">正在測試網路連線</div>
+            <!-- Library Loading Status -->
+            <div id="libLoadingStatus" class="bg-blue-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-xl flex items-center justify-center gap-3">
+                <div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                <span id="loadingText">系統初始化中...</span>
             </div>
 
             <!-- Upload Area -->
-            <!-- 預設先加上 disabled-zone，等 JS 載入成功再移除 -->
             <div id="dropZone" class="drop-zone disabled-zone border-2 border-dashed border-gray-300 rounded-2xl bg-white p-12 text-center cursor-pointer hover:border-blue-400 group shadow-sm relative">
                 <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg, image/webp">
-                
                 <div class="space-y-4 pointer-events-none">
                     <div class="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
                         <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
@@ -125,57 +106,40 @@
                 <div class="flex flex-col items-center space-y-4">
                     <div class="loader"></div>
                     <div class="text-center space-y-1">
-                        <h3 id="statusTitle" class="text-lg font-semibold text-gray-800">正在初始化 AI 模型...</h3>
-                        <p id="statusDesc" class="text-sm text-gray-500">首次使用需下載模型資源 (約 80MB)，請耐心等候。</p>
+                        <h3 id="statusTitle" class="text-lg font-semibold text-gray-800">正在處理...</h3>
+                        <p id="statusDesc" class="text-sm text-gray-500">首次下載模型需時較長 (約 80MB)</p>
                         <p id="progressText" class="text-xs text-blue-600 font-mono hidden">0%</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Error Message -->
-            <div id="errorContainer" class="hidden bg-red-50 p-4 rounded-xl border border-red-200 text-red-700 flex items-center gap-3">
-                <i class="fa-solid fa-circle-exclamation text-xl shrink-0"></i>
-                <div class="flex flex-col">
+            <!-- Error Message Box -->
+            <div id="errorContainer" class="hidden bg-red-50 p-4 rounded-xl border border-red-200 text-red-700 flex items-start gap-3">
+                <i class="fa-solid fa-circle-exclamation text-xl mt-1 shrink-0"></i>
+                <div class="flex flex-col w-full">
                     <span class="font-bold">發生錯誤</span>
-                    <span id="errorMessage" class="text-sm text-red-600 mt-1"></span>
+                    <span id="errorMessage" class="text-sm text-red-600 mt-1 break-all"></span>
                 </div>
             </div>
 
             <!-- Result Area -->
             <div id="resultContainer" class="hidden space-y-6">
-                
-                <!-- Controls -->
                 <div class="flex flex-wrap justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <button id="resetBtn" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2">
                         <i class="fa-solid fa-arrow-rotate-left"></i> 重新上傳
                     </button>
                     <a id="downloadBtn" href="#" download="removed-bg.png" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all flex items-center gap-2 transform hover:-translate-y-0.5">
-                        <i class="fa-solid fa-download"></i> 下載去背圖片
+                        <i class="fa-solid fa-download"></i> 下載
                     </a>
                 </div>
-
-                <!-- Comparison Grid -->
                 <div class="grid md:grid-cols-2 gap-6">
-                    <!-- Original -->
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200">
-                        <div class="mb-2 flex justify-between items-center">
-                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">原始圖片</span>
-                            <span id="originalSize" class="text-xs text-gray-400"></span>
-                        </div>
-                        <div class="aspect-square relative rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                            <img id="originalImg" class="max-w-full max-h-full object-contain" alt="Original">
-                        </div>
+                        <div class="mb-2 flex justify-between items-center"><span class="text-xs font-bold text-gray-500 uppercase">原始圖片</span><span id="originalSize" class="text-xs text-gray-400"></span></div>
+                        <div class="aspect-square relative rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center"><img id="originalImg" class="max-w-full max-h-full object-contain"></div>
                     </div>
-
-                    <!-- Processed -->
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-blue-200 ring-2 ring-blue-50">
-                        <div class="mb-2 flex justify-between items-center">
-                            <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">去背結果</span>
-                            <span class="text-xs text-green-600 font-medium"><i class="fa-solid fa-check"></i> 完成</span>
-                        </div>
-                        <div class="aspect-square relative rounded-lg overflow-hidden checkerboard-bg flex items-center justify-center">
-                            <img id="processedImg" class="max-w-full max-h-full object-contain z-10" alt="Processed">
-                        </div>
+                        <div class="mb-2 flex justify-between items-center"><span class="text-xs font-bold text-blue-600 uppercase">去背結果</span><span class="text-xs text-green-600 font-medium"><i class="fa-solid fa-check"></i> 完成</span></div>
+                        <div class="aspect-square relative rounded-lg overflow-hidden checkerboard-bg flex items-center justify-center"><img id="processedImg" class="max-w-full max-h-full object-contain z-10"></div>
                     </div>
                 </div>
             </div>
@@ -186,140 +150,124 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
         <div class="max-w-5xl mx-auto px-4 text-center text-sm text-gray-500">
-            <p>Powered by <a href="https://github.com/imgly/background-removal-js" target="_blank" class="text-blue-500 hover:underline">@imgly/background-removal</a></p>
-            <p class="mt-1">此工具使用 WebAssembly 技術在瀏覽器端運行，不儲存任何用戶資料。</p>
+            <p>Powered by @imgly/background-removal-js (WASM)</p>
         </div>
     </footer>
 
-    <!-- Smart Loader Script -->
-    <script>
+    <!-- Main Logic using ES Modules -->
+    <script type="module">
         // DOM Elements
+        const logEl = document.getElementById('systemLog');
+        const libStatus = document.getElementById('libLoadingStatus');
+        const loadingText = document.getElementById('loadingText');
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
         const statusContainer = document.getElementById('statusContainer');
+        const resultContainer = document.getElementById('resultContainer');
+        const processedImg = document.getElementById('processedImg');
+        const originalImg = document.getElementById('originalImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const originalSize = document.getElementById('originalSize');
         const statusTitle = document.getElementById('statusTitle');
         const statusDesc = document.getElementById('statusDesc');
         const progressText = document.getElementById('progressText');
-        const resultContainer = document.getElementById('resultContainer');
-        const errorContainer = document.getElementById('errorContainer');
-        const errorMessage = document.getElementById('errorMessage');
-        const originalImg = document.getElementById('originalImg');
-        const processedImg = document.getElementById('processedImg');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const originalSize = document.getElementById('originalSize');
-        const libLoadingStatus = document.getElementById('libLoadingStatus');
-        const loadingText = document.getElementById('loadingText');
-        const loadingSubText = document.getElementById('loadingSubText');
-        const protocolWarning = document.getElementById('protocolWarning');
 
+        // Global state
+        let removeBackgroundFn = null;
+        let activeConfig = {};
         let isProcessing = false;
-        let activePublicPath = ''; // Will be set by the loader
 
-        // --- Robust CDN Loader Logic ---
-        const cdnList = [
-            {
-                name: 'JSDelivr',
-                script: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.0.10/dist/browser/index.min.js',
-                data: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@1.0.10/dist/'
-            },
-            {
-                name: 'Unpkg',
-                script: 'https://unpkg.com/@imgly/background-removal@1.0.10/dist/browser/index.min.js',
-                data: 'https://unpkg.com/@imgly/background-removal-data@1.0.10/dist/'
-            },
-            {
-                name: 'Fastly (JSDelivr)',
-                script: 'https://fastly.jsdelivr.net/npm/@imgly/background-removal@1.0.10/dist/browser/index.min.js',
-                data: 'https://fastly.jsdelivr.net/npm/@imgly/background-removal-data@1.0.10/dist/'
-            }
-        ];
-
-        function checkEnvironment() {
-            // Check if running on file protocol
-            if (window.location.protocol === 'file:') {
-                console.warn("Detected file:// protocol. AI features might be blocked.");
-                protocolWarning.classList.remove('hidden');
-                // We still try to load, but we warn the user
-                return true;
-            }
-            return false;
+        // Logger function
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.textContent = `[${timestamp}] ${msg}`;
+            if (type === 'error') div.className = 'log-error';
+            else if (type === 'warn') div.className = 'log-warn';
+            else div.className = 'log-info';
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${type}] ${msg}`);
         }
 
-        function loadScript(url) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = url;
-                script.onload = () => resolve();
-                script.onerror = () => reject();
-                document.head.appendChild(script);
-            });
-        }
+        document.getElementById('clearLogBtn').addEventListener('click', () => logEl.innerHTML = '');
 
-        async function initLibrary() {
-            const isLocal = checkEnvironment();
+        // --- Step 1: Initialize Library (Robust Loader) ---
+        async function init() {
+            log("正在初始化環境...");
+            
+            // Check Environment
+            const isFileProtocol = window.location.protocol === 'file:';
+            if (isFileProtocol) {
+                log("警告: 偵測到 file:// 協定，這可能會導致功能異常。請使用 GitHub Pages 或 Live Server。", "warn");
+            } else {
+                log("偵測到網頁環境 (HTTP/HTTPS)，環境正常。");
+            }
 
-            for (const cdn of cdnList) {
+            // Define ESM sources to try
+            const sources = [
+                {
+                    name: "JSDelivr (ESM)",
+                    url: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.0.10/+esm",
+                    // Public path for assets (wasm/onnx)
+                    publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@1.0.10/dist/"
+                },
+                {
+                    name: "Unpkg (ESM Fallback)",
+                    // Note: Unpkg usually doesn't do +esm well, pointing to specific file
+                    url: "https://unpkg.com/@imgly/background-removal@1.0.10/dist/browser/index.mjs", 
+                    publicPath: "https://unpkg.com/@imgly/background-removal-data@1.0.10/dist/"
+                }
+            ];
+
+            let loaded = false;
+
+            for (const source of sources) {
                 try {
-                    loadingText.textContent = `嘗試連線至伺服器 (${cdn.name})...`;
-                    loadingSubText.textContent = '正在下載核心元件...';
+                    log(`嘗試載入核心: ${source.name}...`);
+                    log(`URL: ${source.url}`);
                     
-                    await loadScript(cdn.script);
+                    // Dynamic Import
+                    const module = await import(source.url);
                     
-                    // Double check if variable exists
-                    if (typeof imglyBackgroundRemoval !== 'undefined') {
-                        console.log(`Success! Loaded from ${cdn.name}`);
-                        activePublicPath = cdn.data; // Set the data path to match the working CDN
-                        onLibraryLoaded();
-                        return;
+                    if (module && typeof module.removeBackground === 'function') {
+                        removeBackgroundFn = module.removeBackground;
+                        activeConfig = {
+                            publicPath: source.publicPath,
+                            debug: true, // Enable internal debug logging
+                            progress: handleProgress
+                        };
+                        log(`核心載入成功! 來源: ${source.name}`, "info");
+                        loaded = true;
+                        break;
                     } else {
-                        throw new Error("Script loaded but object not found");
+                        throw new Error("模組載入成功但未找到 removeBackground 函數");
                     }
                 } catch (e) {
-                    console.warn(`Failed to load from ${cdn.name}`, e);
-                    loadingSubText.textContent = `${cdn.name} 連線失敗，切換中...`;
-                    // Continue to next CDN
+                    log(`載入失敗 (${source.name}): ${e.message}`, "error");
+                    // Continue to next source
                 }
             }
 
-            // All CDNs failed
-            const errorText = isLocal 
-                ? "無法載入 AI 元件。原因：您正以本地檔案 (file://) 方式開啟，瀏覽器基於安全性阻擋了連線。請參考上方的黃色提示框解決。"
-                : "無法連線至任何 AI 伺服器。請檢查您的防火牆、廣告阻擋器，或嘗試更換網路環境（如手機熱點）。";
-            
-            showFatalError(errorText);
+            if (loaded) {
+                libStatus.classList.add('hidden');
+                dropZone.classList.remove('disabled-zone');
+                log("系統就緒，等待使用者上傳。", "info");
+                setupUI();
+            } else {
+                libStatus.className = "bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex flex-col gap-2";
+                libStatus.innerHTML = `
+                    <div class="flex items-center gap-2 font-bold"><i class="fa-solid fa-xmark"></i> 初始化失敗</div>
+                    <div class="text-sm">無法連線至任何 CDN 來源。請查看上方日誌了解詳細錯誤。</div>
+                `;
+                log("嚴重錯誤: 所有 CDN 來源均無法使用。", "error");
+            }
         }
 
-        function onLibraryLoaded() {
-            libLoadingStatus.classList.add('hidden');
-            dropZone.classList.remove('disabled-zone');
-            setupEventListeners();
-        }
-        
-        // --- End Loader Logic ---
-
-        // Configuration generator
-        function getConfig() {
-            return {
-                publicPath: activePublicPath, // Uses the CDN that actually worked
-                progress: (key, current, total) => {
-                    const percentage = total ? Math.round((current / total) * 100) : 0;
-                    
-                    if (key.includes('fetch')) {
-                         statusTitle.textContent = `正在下載 AI 模型... (${percentage}%)`;
-                         statusDesc.textContent = "第一次使用需要下載約 80MB 的模型檔案，請保持網路連線。";
-                         progressText.classList.remove('hidden');
-                         progressText.textContent = `${percentage}%`;
-                    } else if (key.includes('compute')) {
-                        statusTitle.textContent = "正在分析並移除背景...";
-                        statusDesc.textContent = "AI 正在計算像素，這通常只需要幾秒鐘。";
-                        progressText.classList.add('hidden');
-                    }
-                }
-            };
-        }
-
-        function setupEventListeners() {
+        // --- Step 2: UI Interaction ---
+        function setupUI() {
             dropZone.addEventListener('click', () => fileInput.click());
             
             dropZone.addEventListener('dragover', (e) => {
@@ -327,72 +275,83 @@
                 dropZone.classList.add('drag-over');
             });
 
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('drag-over');
-            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('drag-over');
-                if (e.dataTransfer.files.length > 0) {
-                    handleFile(e.dataTransfer.files[0]);
-                }
+                if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
             });
 
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0]);
-                }
+                if (e.target.files.length) processFile(e.target.files[0]);
             });
 
-            resetBtn.addEventListener('click', resetUI);
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                resultContainer.classList.add('hidden');
+                dropZone.classList.remove('hidden');
+                fileInput.value = '';
+                log("重置介面");
+            });
         }
 
-        async function handleFile(file) {
-            if (isProcessing) return;
+        function handleProgress(key, current, total) {
+            // Log less frequently to avoid spamming
+            // log(`Progress: ${key} ${current}/${total}`);
+            
+            if (key.includes('fetch')) {
+                const pct = total ? Math.round(current / total * 100) : 0;
+                statusTitle.textContent = `下載模型中... ${pct}%`;
+                statusDesc.textContent = "首次執行需要下載約 80MB 資料";
+                progressText.classList.remove('hidden');
+                progressText.textContent = `${pct}%`;
+            } else if (key.includes('compute')) {
+                statusTitle.textContent = "AI 運算中...";
+                statusDesc.textContent = "正在分析圖片像素";
+                progressText.classList.add('hidden');
+            }
+        }
+
+        async function processFile(file) {
+            if (isProcessing || !removeBackgroundFn) return;
+            
+            log(`收到檔案: ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)`);
             
             if (!file.type.match('image.*')) {
-                showError("請上傳有效的圖片檔案 (PNG, JPG, WEBP)", "檔案格式錯誤");
+                log("錯誤: 檔案類型不符", "error");
+                alert("請上傳圖片檔案 (JPG, PNG, WEBP)");
                 return;
             }
 
-            resetUI();
-            dropZone.classList.add('hidden');
-            statusContainer.classList.remove('hidden');
             isProcessing = true;
-            
+            dropZone.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+            statusContainer.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+
             const objectUrl = URL.createObjectURL(file);
             originalImg.src = objectUrl;
             originalSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
 
             try {
-                // Use the config with the dynamic publicPath
-                const blob = await imglyBackgroundRemoval.removeBackground(file, getConfig());
+                log("開始執行 removeBackground...");
                 
+                // Execute AI
+                const blob = await removeBackgroundFn(file, activeConfig);
+                
+                log("去背完成，產生 Blob 圖片");
                 const resultUrl = URL.createObjectURL(blob);
                 processedImg.src = resultUrl;
                 downloadBtn.href = resultUrl;
                 
                 statusContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
+            } catch (err) {
+                log(`去背過程發生錯誤: ${err.message}`, "error");
+                console.error(err);
                 
-            } catch (error) {
-                console.error("Background Removal Error:", error);
-                
-                let errorMsg = "去背過程發生未知錯誤。";
-                if (error instanceof Error) {
-                    errorMsg = error.message;
-                } else if (typeof error === 'string') {
-                    errorMsg = error;
-                }
-
-                if (window.location.protocol === 'file:') {
-                     errorMsg = "失敗：瀏覽器安全性限制 (CORS/Worker) 阻擋了本地檔案執行 AI。請改用 Live Server 或將檔案上傳至網頁空間後再試。";
-                } else if (errorMsg.includes('fetch') || errorMsg.includes('Network')) {
-                    errorMsg += " (下載模型失敗，請檢查網路連線或是否被擋)";
-                }
-
-                showError(errorMsg);
+                errorContainer.classList.remove('hidden');
+                errorMessage.textContent = `${err.message} (請查看詳細日誌)`;
                 
                 dropZone.classList.remove('hidden');
                 statusContainer.classList.add('hidden');
@@ -401,33 +360,8 @@
             }
         }
 
-        function resetUI() {
-            dropZone.classList.remove('hidden');
-            resultContainer.classList.add('hidden');
-            statusContainer.classList.add('hidden');
-            errorContainer.classList.add('hidden');
-            fileInput.value = '';
-            isProcessing = false;
-        }
-
-        function showError(detail) {
-            errorContainer.classList.remove('hidden');
-            errorMessage.textContent = `${detail}`;
-        }
-
-        function showFatalError(msg) {
-            libLoadingStatus.classList.remove('bg-blue-50', 'text-blue-800', 'border-blue-200');
-            libLoadingStatus.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
-            libLoadingStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> <span>${msg}</span>`;
-        }
-
-        // Prevent accidental drops on the window
-        window.addEventListener('dragover', e => e.preventDefault());
-        window.addEventListener('drop', e => e.preventDefault());
-
-        // Start initialization immediately
-        initLibrary();
-
+        // Start
+        init();
     </script>
 </body>
 </html>
