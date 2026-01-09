@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 自動去背工具 (GitHub Pages 專用版)</title>
+    <title>AI 自動去背工具 (終極載入版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -46,6 +46,7 @@
         .log-error { color: #f87171; }
         .log-warn { color: #facc15; }
         .log-info { color: #60a5fa; }
+        .log-success { color: #a3e635; font-weight: bold; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
@@ -55,7 +56,7 @@
         <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-wand-magic-sparkles text-blue-600 text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">AI 去背神器 (Debug Mode)</h1>
+                <h1 class="text-xl font-bold tracking-wide">AI 去背神器 (終極版)</h1>
             </div>
             <div class="text-sm text-gray-500 hidden sm:block">
                 <i class="fa-brands fa-github mr-1"></i> GitHub Pages 優化版
@@ -75,7 +76,7 @@
             <!-- Debug Log Section (Visible to help troubleshoot) -->
             <div class="w-full">
                 <div class="flex justify-between items-end mb-1 px-1">
-                    <span class="text-xs font-bold text-gray-500 uppercase">系統日誌 (若發生錯誤請截圖此處)</span>
+                    <span class="text-xs font-bold text-gray-500 uppercase">系統日誌</span>
                     <button id="clearLogBtn" class="text-xs text-blue-500 hover:underline">清除日誌</button>
                 </div>
                 <div id="systemLog" class="terminal"></div>
@@ -154,7 +155,7 @@
         </div>
     </footer>
 
-    <!-- Main Logic using ES Modules -->
+    <!-- Main Logic -->
     <script type="module">
         // DOM Elements
         const logEl = document.getElementById('systemLog');
@@ -179,13 +180,13 @@
         let activeConfig = {};
         let isProcessing = false;
 
-        // Logger function
         function log(msg, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const div = document.createElement('div');
             div.textContent = `[${timestamp}] ${msg}`;
             if (type === 'error') div.className = 'log-error';
             else if (type === 'warn') div.className = 'log-warn';
+            else if (type === 'success') div.className = 'log-success';
             else div.className = 'log-info';
             logEl.appendChild(div);
             logEl.scrollTop = logEl.scrollHeight;
@@ -194,111 +195,125 @@
 
         document.getElementById('clearLogBtn').addEventListener('click', () => logEl.innerHTML = '');
 
-        // --- Step 1: Initialize Library (Robust Loader) ---
+        // --- Core Loading Logic ---
         async function init() {
-            log("正在初始化環境...");
+            log("--- 系統啟動 (v4) ---");
             
             // Check Environment
-            const isFileProtocol = window.location.protocol === 'file:';
-            if (isFileProtocol) {
-                log("警告: 偵測到 file:// 協定，這可能會導致功能異常。請使用 GitHub Pages 或 Live Server。", "warn");
+            if (window.location.protocol === 'file:') {
+                log("警告: 使用 file:// 協定，建議改用 HTTP 伺服器。", "warn");
             } else {
-                log("偵測到網頁環境 (HTTP/HTTPS)，環境正常。");
+                log("環境檢查正常 (HTTP/HTTPS)。");
             }
 
-            // Define ESM sources to try
-            const sources = [
+            // Strategy 1: Try Module Imports (Modern)
+            const moduleSources = [
+                {
+                    name: "ESM.sh (推薦)",
+                    url: "https://esm.sh/@imgly/background-removal@1.0.10",
+                    publicPath: "https://esm.sh/@imgly/background-removal-data@1.0.10/dist/"
+                },
                 {
                     name: "JSDelivr (ESM)",
                     url: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.0.10/+esm",
-                    // Public path for assets (wasm/onnx)
                     publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@1.0.10/dist/"
-                },
-                {
-                    name: "Unpkg (ESM Fallback)",
-                    // Note: Unpkg usually doesn't do +esm well, pointing to specific file
-                    url: "https://unpkg.com/@imgly/background-removal@1.0.10/dist/browser/index.mjs", 
-                    publicPath: "https://unpkg.com/@imgly/background-removal-data@1.0.10/dist/"
                 }
             ];
 
-            let loaded = false;
-
-            for (const source of sources) {
+            for (const source of moduleSources) {
                 try {
-                    log(`嘗試載入核心: ${source.name}...`);
-                    log(`URL: ${source.url}`);
-                    
-                    // Dynamic Import
+                    log(`嘗試載入模組: ${source.name}...`);
                     const module = await import(source.url);
-                    
                     if (module && typeof module.removeBackground === 'function') {
-                        removeBackgroundFn = module.removeBackground;
-                        activeConfig = {
-                            publicPath: source.publicPath,
-                            debug: true, // Enable internal debug logging
-                            progress: handleProgress
-                        };
-                        log(`核心載入成功! 來源: ${source.name}`, "info");
-                        loaded = true;
-                        break;
-                    } else {
-                        throw new Error("模組載入成功但未找到 removeBackground 函數");
+                        setLibrary(module.removeBackground, source.publicPath, source.name);
+                        return;
                     }
                 } catch (e) {
-                    log(`載入失敗 (${source.name}): ${e.message}`, "error");
-                    // Continue to next source
+                    log(`${source.name} 載入失敗: ${e.message}`, "error");
                 }
             }
 
-            if (loaded) {
-                libStatus.classList.add('hidden');
-                dropZone.classList.remove('disabled-zone');
-                log("系統就緒，等待使用者上傳。", "info");
-                setupUI();
-            } else {
-                libStatus.className = "bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex flex-col gap-2";
-                libStatus.innerHTML = `
-                    <div class="flex items-center gap-2 font-bold"><i class="fa-solid fa-xmark"></i> 初始化失敗</div>
-                    <div class="text-sm">無法連線至任何 CDN 來源。請查看上方日誌了解詳細錯誤。</div>
-                `;
-                log("嚴重錯誤: 所有 CDN 來源均無法使用。", "error");
+            // Strategy 2: Fallback to Script Tag (Legacy UMD)
+            log("所有模組載入失敗，切換至傳統 Script 標籤載入模式...", "warn");
+            
+            try {
+                await loadScript("https://unpkg.com/@imgly/background-removal@1.0.10/dist/browser/index.min.js");
+                // Check Global Variable
+                if (typeof window.imglyBackgroundRemoval !== 'undefined') {
+                     setLibrary(
+                         window.imglyBackgroundRemoval.removeBackground, 
+                         "https://unpkg.com/@imgly/background-removal-data@1.0.10/dist/",
+                         "Unpkg (Script Tag)"
+                     );
+                     return;
+                } else {
+                    throw new Error("Script loaded but global object missing");
+                }
+            } catch (e) {
+                log(`Script 標籤載入失敗: ${e.message}`, "error");
             }
+
+            // All Failed
+            showFatalError();
         }
 
-        // --- Step 2: UI Interaction ---
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("Script load error"));
+                document.body.appendChild(script);
+            });
+        }
+
+        function setLibrary(fn, path, sourceName) {
+            removeBackgroundFn = fn;
+            activeConfig = {
+                publicPath: path,
+                debug: true,
+                progress: handleProgress
+            };
+            log(`核心載入成功！來源: ${sourceName}`, "success");
+            libStatus.classList.add('hidden');
+            dropZone.classList.remove('disabled-zone');
+            setupUI();
+        }
+
+        function showFatalError() {
+            libStatus.className = "bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex flex-col gap-2";
+            libStatus.innerHTML = `
+                <div class="flex items-center gap-2 font-bold"><i class="fa-solid fa-ban"></i> 無法載入程式庫</div>
+                <div class="text-sm">
+                    <p>所有連線嘗試皆失敗。</p>
+                    <p class="mt-2"><strong>可能原因與解法：</strong></p>
+                    <ul class="list-disc list-inside">
+                        <li>您的瀏覽器安裝了 <strong>AdBlock</strong> 或 <strong>uBlock Origin</strong>？請嘗試關閉後重新整理。</li>
+                        <li>您的網路環境封鎖了 CDN 資源。</li>
+                    </ul>
+                </div>
+            `;
+            log("嚴重錯誤: 所有載入策略皆失敗。請檢查廣告阻擋擴充功能。", "error");
+        }
+
+        // --- UI Interaction ---
         function setupUI() {
             dropZone.addEventListener('click', () => fileInput.click());
-            
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('drag-over');
-            });
-
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-
             dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-over');
+                e.preventDefault(); dropZone.classList.remove('drag-over');
                 if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
             });
-
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length) processFile(e.target.files[0]);
             });
-
             document.getElementById('resetBtn').addEventListener('click', () => {
-                resultContainer.classList.add('hidden');
-                dropZone.classList.remove('hidden');
-                fileInput.value = '';
-                log("重置介面");
+                resultContainer.classList.add('hidden'); dropZone.classList.remove('hidden'); fileInput.value = '';
             });
         }
 
         function handleProgress(key, current, total) {
-            // Log less frequently to avoid spamming
-            // log(`Progress: ${key} ${current}/${total}`);
-            
             if (key.includes('fetch')) {
                 const pct = total ? Math.round(current / total * 100) : 0;
                 statusTitle.textContent = `下載模型中... ${pct}%`;
@@ -314,13 +329,10 @@
 
         async function processFile(file) {
             if (isProcessing || !removeBackgroundFn) return;
-            
-            log(`收到檔案: ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)`);
+            log(`處理檔案: ${file.name}`);
             
             if (!file.type.match('image.*')) {
-                log("錯誤: 檔案類型不符", "error");
-                alert("請上傳圖片檔案 (JPG, PNG, WEBP)");
-                return;
+                alert("請上傳圖片檔案"); return;
             }
 
             isProcessing = true;
@@ -335,11 +347,9 @@
 
             try {
                 log("開始執行 removeBackground...");
-                
-                // Execute AI
                 const blob = await removeBackgroundFn(file, activeConfig);
+                log("去背完成!", "success");
                 
-                log("去背完成，產生 Blob 圖片");
                 const resultUrl = URL.createObjectURL(blob);
                 processedImg.src = resultUrl;
                 downloadBtn.href = resultUrl;
@@ -347,12 +357,10 @@
                 statusContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
             } catch (err) {
-                log(`去背過程發生錯誤: ${err.message}`, "error");
+                log(`錯誤: ${err.message}`, "error");
                 console.error(err);
-                
                 errorContainer.classList.remove('hidden');
-                errorMessage.textContent = `${err.message} (請查看詳細日誌)`;
-                
+                errorMessage.textContent = `${err.message}`;
                 dropZone.classList.remove('hidden');
                 statusContainer.classList.add('hidden');
             } finally {
@@ -360,7 +368,6 @@
             }
         }
 
-        // Start
         init();
     </script>
 </body>
